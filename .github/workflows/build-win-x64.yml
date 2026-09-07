@@ -1,0 +1,42 @@
+name: build-win-x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-win-x64.yml'
+      - 'build-runtime.sh'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official Node v25.9.0 win-x64
+        shell: bash
+        run: |
+          curl -fL --retry 3 -o node.zip https://nodejs.org/dist/v25.9.0/node-v25.9.0-win-x64.zip
+          powershell -Command "Expand-Archive -Force node.zip -DestinationPath ."
+          mv node-v25.9.0-win-x64 runtime
+          ls runtime | head
+
+      - name: npm install -g openclaw@2026.8.2 (allow-scripts)
+        shell: cmd
+        run: |
+          cd runtime
+          npm install -g openclaw@2026.8.2 --allow-scripts=openclaw,@google/genai,koffi,tree-sitter-bash,protobufjs --no-audit --no-fund
+          dir node_modules\openclaw\openclaw.mjs
+
+      - name: Package runtime
+        shell: bash
+        run: |
+          tar czf rt-win-x64.tar.gz runtime
+          du -sh rt-win-x64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rt-win-x64
+          path: rt-win-x64.tar.gz
+          retention-days: 14
